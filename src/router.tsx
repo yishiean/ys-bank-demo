@@ -8,6 +8,8 @@ export const getRouter = () => {
   const router = createRouter({
     routeTree,
     context: { queryClient },
+    // "/" in Lovable preview, "/<repo>" on GitHub Pages (from Vite's base).
+    basepath: import.meta.env.BASE_URL.replace(/\/$/, "") || "/",
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
   });
