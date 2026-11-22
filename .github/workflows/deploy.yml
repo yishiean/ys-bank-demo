@@ -1,0 +1,55 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - run: bun run build
+        env:
+          PAGES_BASE: /${{ github.event.repository.name }}/
+      - name: Prepare static site
+        run: |
+          SHELL_FILE=$(find . -path ./node_modules -prune -o -name '_shell.html' -print | head -n1)
+          if [ -z "$SHELL_FILE" ]; then
+            echo "No _shell.html found. HTML files in build output:"
+            find . -path ./node_modules -prune -o -name '*.html' -print
+            exit 1
+          fi
+          OUT=$(dirname "$SHELL_FILE")
+          echo "Static output: $OUT"
+          mkdir -p site
+          cp -r "$OUT"/. site/
+          cp site/_shell.html site/index.html
+          cp site/_shell.html site/404.html
+          touch site/.nojekyll
+          ls -la site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
